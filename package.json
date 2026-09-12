@@ -1,0 +1,17 @@
+{
+  "name": "skybreak-arena-2d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "three": "0.180.0",
+    "vite": "7.1.5"
+  },
+  "devDependencies": {
+    "playwright": "1.55.0"
+  }
+}
