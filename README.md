@@ -25,14 +25,14 @@
 
 | ファイター | 特徴 | 通常B技 | MAX |
 |---|---|---|---|
-| VOLT | 扱いやすい速度と電撃 | THUNDER SHOT | MAX THUNDER |
-| RIFT | 最速の移動・速い連射、軽い一撃 | PLASMA SHOT | STAR LASER |
-| KIRBY | ゆっくり落下、地上＋空中3回ジャンプ | STAR SHOT | STAR CRASH（3方向） |
+| ARC | 扱いやすい速度と電撃 | THUNDER SHOT | MAX THUNDER |
+| JET | 最速の移動・速い連射、軽い一撃 | PLASMA SHOT | STAR LASER |
+| MIST | ゆっくり落下、地上＋空中3回ジャンプ | STAR SHOT | STAR CRASH（3方向） |
 | BRICK | 重い一撃・吹き飛びにくさ、控えめな速度 | BOLT SHOT | FURNACE BREAK |
 | SPRING | 高いジャンプと速い移動 | WIND SHOT | SKY CYCLONE |
 
-VOLT・RIFT・BRICK・SPRINGはオリジナルキャラクター、KIRBYはユーザー指定のファンゲーム用画像です。公式作品ではありません。
-画像は前のテスト版の資産を再利用。BGMはユーザー提供曲 `assets/battle-theme.mp4`（ステレオAAC、約2分59秒）です。曲頭0.75秒と曲末2.83秒の無音を再生範囲から外し、対戦中は低負荷でループ再生します。ポーズは再生位置を保持し、効果音に合わせてBGMを短く下げます。読み込みに失敗した場合は、オリジナル曲「IGNITION」（`assets/ignition.wav`）へ自動的に切り替わります。
+ARC（雷の結晶ゴーレム）・JET（仮面のエアスケーター）・MIST（雲の精霊）は新規デザインで、各12ポーズの透過画像を使用します。BRICK・SPRINGは従来のデザインです。
+旧キャラクター画像は保管されており、現行のゲームとビルドからは参照しません。BGMはユーザー提供曲 `assets/battle-theme.mp4`（ステレオAAC、約2分59秒）です。曲頭0.75秒と曲末2.83秒の無音を再生範囲から外し、対戦中は低負荷でループ再生します。ポーズは再生位置を保持し、効果音に合わせてBGMを短く下げます。読み込みに失敗した場合は、オリジナル曲「IGNITION」（`assets/ignition.wav`）へ自動的に切り替わります。
 
 ## スマホでテスト
 

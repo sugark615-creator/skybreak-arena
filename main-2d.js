@@ -1,5 +1,5 @@
 import './polish.css';
-import { loadPoseSheets, drawPose, frameFor } from './sprite-animation.js';
+import { loadPoseSheets, drawPose, frameFor, posePortrait } from './sprite-animation.js';
 import { drawSkyBackground, drawSkyPlatforms } from './sky-stage.js';
 import { createBattleAudio } from './battle-audio.mjs';
 
@@ -23,32 +23,32 @@ const ui = {
 };
 function loadImage(src) { const image = new Image(); image.src = src; return image; }
 const sprites = {
-  volt: loadImage(new URL('./assets/electric-mouse.png', import.meta.url).href),
-  rift: loadImage(new URL('./assets/pilot-fox.png', import.meta.url).href),
-  kirby: loadImage(new URL('./assets/kirby-fighter.png', import.meta.url).href),
+  arc: loadImage(new URL('./assets/arc-poses-v2.png', import.meta.url).href),
+  jet: loadImage(new URL('./assets/jet-poses-v2.png', import.meta.url).href),
+  mist: loadImage(new URL('./assets/mist-poses-v2.png', import.meta.url).href),
   brick: loadImage(new URL('./assets/brick-fighter.png', import.meta.url).href),
   spring: loadImage(new URL('./assets/spring-fighter.png', import.meta.url).href),
 };
 const poseUrls={
-  volt:new URL('./assets/volt-poses-v1.png',import.meta.url).href,
-  rift:new URL('./assets/rift-poses-v1.png',import.meta.url).href,
-  kirby:new URL('./assets/kirby-poses-v1.png',import.meta.url).href,
+  arc:{src:new URL('./assets/arc-poses-v2.png',import.meta.url).href,grid:true},
+  jet:{src:new URL('./assets/jet-poses-v2.png',import.meta.url).href,grid:true},
+  mist:{src:new URL('./assets/mist-poses-v2.png',import.meta.url).href,grid:true},
   brick:new URL('./assets/brick-poses-v1.png',import.meta.url).href,
   spring:new URL('./assets/spring-poses-v1.png',import.meta.url).href,
 };
 const roster = {
-  volt: {name:'VOLT', color:'#ffd62e', accent:'#fff5a8', width:132,height:150,spriteFacing:1,
+  arc: {name:'ARC', color:'#ffd62e', accent:'#fff5a8', width:132,height:150,spriteFacing:1,
     speed:460,accel:2700,jump:700,gravity:1850,airJumps:1,power:1,weight:1,
     normalName:'THUNDER SHOT',maxName:'MAX THUNDER',shot:'spark',cooldown:.62,shotSpeed:720,shotDamage:8,
-    description:'素早い電撃と、扱いやすい動き。迷ったらこの一体。',stats:[4,3,3]},
-  rift: {name:'RIFT', color:'#65a8ff', accent:'#d8edff',width:128,height:178,spriteFacing:-1,
+    description:'雷を宿す結晶ゴーレム。電撃と近接技を扱いやすい。',stats:[4,3,3]},
+  jet: {name:'JET', color:'#65a8ff', accent:'#d8edff',width:128,height:178,spriteFacing:1,
     speed:550,accel:3300,jump:675,gravity:1950,airJumps:1,power:.85,weight:.9,
     normalName:'PLASMA SHOT',maxName:'STAR LASER',shot:'laser',cooldown:.46,shotSpeed:1050,shotDamage:6,
-    description:'最速のダッシュと連射レーザー。間合いを取って攻める。',stats:[5,2,3]},
-  kirby: {name:'KIRBY',color:'#ff83bd',accent:'#ffd4e9',width:145,height:132,spriteFacing:1,
+    description:'仮面のエアスケーター。最速のダッシュと連射で攻める。',stats:[5,2,3]},
+  mist: {name:'MIST',color:'#55d6ce',accent:'#c6fff4',width:145,height:132,spriteFacing:1,
     speed:370,accel:2200,jump:610,gravity:1250,airJumps:3,power:.9,weight:.82,
     normalName:'STAR SHOT',maxName:'STAR CRASH',shot:'star',cooldown:.75,shotSpeed:590,shotDamage:9,
-    description:'空中でさらに3回ジャンプ。ふわりと浮いて復帰しやすい。',stats:[2,3,5]},
+    description:'雲を操る精霊。空中でさらに3回跳び、ふわりと復帰する。',stats:[2,3,5]},
   brick: {name:'BRICK',color:'#ff5549',accent:'#ffd18f',width:150,height:168,spriteFacing:1,
     speed:340,accel:2200,jump:620,gravity:2100,airJumps:1,power:1.35,weight:1.3,
     normalName:'BOLT SHOT',maxName:'FURNACE BREAK',shot:'fire',cooldown:.92,shotSpeed:530,shotDamage:12,
@@ -66,11 +66,13 @@ const pointerHolds = new Map();
 const particles = [], projectiles = [], afterimages = [], impactRings = [], damageTexts = [];
 let running=false,paused=false,matchTime=180,lastTime=performance.now(),accumulator=0,simTime=0;
 let calloutTimer,resultTimer,screenShake=0,hitStop=0,countdown=0,countdownCue=0,jumpBuffer=0,attackBuffer=0;
-let selectedCharacter='volt',assetsReady=false,bgmMuted=false,volume=.6,aiTimer=0,demoMode=false;
+let selectedCharacter='arc',assetsReady=false,bgmMuted=false,volume=.6,aiTimer=0,demoMode=false;
 let matchStats={hits:0,damage:0,max:0};
 const settings = {difficulty:'normal',opponent:'auto'};
 function readPreferences() {
   try { const p=JSON.parse(localStorage.getItem('skybreak-preferences-v2') || '{}');
+    const legacy={volt:'arc',rift:'jet',kirby:'mist'};
+    p.character=legacy[p.character]||p.character;p.opponent=legacy[p.opponent]||p.opponent;
     if (roster[p.character]) selectedCharacter=p.character;
     if (['easy','normal','hard'].includes(p.difficulty)) settings.difficulty=p.difficulty;
     if (p.opponent==='auto' || roster[p.opponent]) settings.opponent=p.opponent;
@@ -87,13 +89,13 @@ function fighter(config,startX,baseFacing,ai=false) {
     attackTimer:0,attackDuration:.3,comboStep:0,comboWindow:0,attackHasHit:false,stun:0,guard:false,
     respawn:0,invincible:0,eliminated:false,flash:0,motionPhase:0,landTimer:0,specialTimer:0,specialDuration:.4,trailCooldown:0};
 }
-const player=fighter(roster.volt,430,1), cpu=fighter(roster.rift,1050,-1,true),fighters=[player,cpu];
+const player=fighter(roster.arc,430,1), cpu=fighter(roster.jet,1050,-1,true),fighters=[player,cpu];
 function applyCharacter(target,key) { Object.assign(target,roster[key]); target.y=690-target.height; }
 function refreshOpponent(randomize=false) {
   let key=settings.opponent;
   if (key==='auto') {
     const options=Object.keys(roster).filter(k=>k!==selectedCharacter);
-    key=randomize?options[Math.floor(Math.random()*options.length)]:selectedCharacter==='rift'?'volt':'rift';
+    key=randomize?options[Math.floor(Math.random()*options.length)]:selectedCharacter==='jet'?'arc':'jet';
   }
   applyCharacter(cpu,key);
   ui.cpuName.textContent=cpu.name;
@@ -243,11 +245,11 @@ function special(f){
   if(maximum){f.ultimate=0;if(f===player)matchStats.max++;}
   f.specialCooldown=maximum?1.4:f.cooldown;f.specialDuration=maximum?.7:.28;f.specialTimer=f.specialDuration;
   const dir=f.facing;const x=f.x+f.width/2+dir*(f.width*.5+10),y=f.y+f.height*.48;
-  const spreads=maximum&&f.key==='kirby'?[-.25,0,.25]:[0];
+  const spreads=maximum&&f.key==='mist'?[-.25,0,.25]:[0];
   for(const angle of spreads){
     projectiles.push({owner:f,type:f.shot,maximum,x,y,previousX:x,vx:dir*(maximum?f.shotSpeed*1.08:f.shotSpeed)*Math.cos(angle),
-      vy:Math.sin(angle)*480,radius:maximum?(f.key==='rift'?32:48):(f.key==='brick'?25:18),
-      damage:maximum?(f.key==='kirby'?15:28*f.power):f.shotDamage,
+      vy:Math.sin(angle)*480,radius:maximum?(f.key==='jet'?32:48):(f.key==='brick'?25:18),
+      damage:maximum?(f.key==='mist'?15:28*f.power):f.shotDamage,
       force:maximum?750*f.power:340,lift:maximum?-360:-160,direction:dir,
       life:maximum?1.9:1.55,color:f.color});
   }
@@ -632,6 +634,10 @@ readPreferences();$('opponent-select').value=settings.opponent;$('difficulty-sel
 $('music-volume').value=Math.round(volume*100);$('volume-value').textContent=Math.round(volume*100)+'%';soundUi();
 selectCharacter(selectedCharacter);setPlaySurfaces(false);
 Promise.all([...Object.values(sprites).map(image=>image.decode()),loadPoseSheets(poseUrls)]).then(()=>{
+  for(const key of ['arc','jet','mist']){
+    const portrait=posePortrait(key);sprites[key].src=portrait;
+    document.querySelectorAll('[data-character-image="'+key+'"]').forEach(image=>image.src=portrait);
+  }
   assetsReady=true;ui.startButton.disabled=false;ui.demoButton.disabled=false;ui.startButton.querySelector('span').textContent='このファイターで対戦';
 }).catch(()=>{ui.startButton.querySelector('span').textContent='画像を読み込めません';ui.demoButton.querySelector('span').textContent='画像を読み込めません';$('selected-description').textContent='ページを再読み込みしてください。';});
 function registerWebMcp(){

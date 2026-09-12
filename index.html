@@ -24,14 +24,14 @@
 
       <section class="hud" aria-label="対戦状況">
         <article class="fighter-card player-card">
-          <div class="fighter-name"><span id="player-swatch" class="swatch yellow"></span><span id="player-name">VOLT</span> <small id="player-role">YOU</small></div>
+          <div class="fighter-name"><span id="player-swatch" class="swatch yellow"></span><span id="player-name">ARC</span> <small id="player-role">YOU</small></div>
           <div class="fighter-stats"><strong id="player-damage">0</strong><span>%</span></div>
           <div class="stocks" id="player-stocks" aria-label="残りストック3">◆ ◆ ◆</div>
           <div class="shield-label">GUARD</div><div class="meter"><i id="player-shield"></i></div>
           <div class="ultimate-row"><span>MAX</span><div class="ultimate-meter"><i id="ultimate-meter"></i></div><b id="ultimate-value">0%</b></div>
         </article>
         <article class="fighter-card cpu-card">
-          <div class="fighter-name"><span id="cpu-swatch" class="swatch blue"></span><span id="cpu-name">RIFT</span> <small id="cpu-role">CPU</small></div>
+          <div class="fighter-name"><span id="cpu-swatch" class="swatch blue"></span><span id="cpu-name">JET</span> <small id="cpu-role">CPU</small></div>
           <div class="fighter-stats"><strong id="cpu-damage">0</strong><span>%</span></div>
           <div class="stocks" id="cpu-stocks" aria-label="CPU残りストック3">◆ ◆ ◆</div>
           <div class="shield-label">GUARD</div><div class="meter"><i id="cpu-shield"></i></div>
@@ -61,14 +61,14 @@
       <section id="start-screen" class="modal-screen start-screen visible" aria-labelledby="select-title">
         <div class="menu-heading"><div><div class="eyebrow">SKYBREAK ARENA / SKY SANCTUARY</div><h1 id="select-title">ファイターを選択</h1></div><span class="mode-tag">1 PLAYER · 3 STOCK</span></div>
         <div class="character-select" role="group" aria-label="キャラクター選択">
-          <button class="character-option selected" data-character="volt" style="--fighter:#ffd62e" aria-pressed="true"><span class="roster-number">01</span><img data-character-image="volt" alt="" /><strong>VOLT</strong><small>電撃バランス</small></button>
-          <button class="character-option" data-character="rift" style="--fighter:#65a8ff" aria-pressed="false"><span class="roster-number">02</span><img data-character-image="rift" alt="" /><strong>RIFT</strong><small>スピード</small></button>
-          <button class="character-option" data-character="kirby" style="--fighter:#ff83bd" aria-pressed="false"><span class="roster-number">03</span><img data-character-image="kirby" alt="" /><strong>KIRBY</strong><small>空中アクション</small></button>
+          <button class="character-option selected" data-character="arc" style="--fighter:#ffd62e" aria-pressed="true"><span class="roster-number">01</span><img data-character-image="arc" alt="" /><strong>ARC</strong><small>電撃バランス</small></button>
+          <button class="character-option" data-character="jet" style="--fighter:#65a8ff" aria-pressed="false"><span class="roster-number">02</span><img data-character-image="jet" alt="" /><strong>JET</strong><small>スピード</small></button>
+          <button class="character-option" data-character="mist" style="--fighter:#55d6ce" aria-pressed="false"><span class="roster-number">03</span><img data-character-image="mist" alt="" /><strong>MIST</strong><small>空中アクション</small></button>
           <button class="character-option" data-character="brick" style="--fighter:#ff5549" aria-pressed="false"><span class="roster-number">04</span><img data-character-image="brick" alt="" /><strong>BRICK</strong><small>パワー</small></button>
           <button class="character-option" data-character="spring" style="--fighter:#54d96b" aria-pressed="false"><span class="roster-number">05</span><img data-character-image="spring" alt="" /><strong>SPRING</strong><small>ハイジャンプ</small></button>
         </div>
-        <div class="selection-detail"><div><strong id="selected-title">VOLT</strong><p id="selected-description">素早い電撃と、扱いやすい動き。</p><div class="move-summary"><span>B <b id="normal-move">THUNDER SHOT</b></span><span>MAX <b id="max-move">MAX THUNDER</b></span></div></div><div id="character-stats" class="character-stats" aria-label="キャラクター性能"></div></div>
-        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="volt">VOLT</option><option value="rift">RIFT</option><option value="kirby">KIRBY</option><option value="brick">BRICK</option><option value="spring">SPRING</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>VOLT VS RIFT</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>WATCH CPU VS CPU</small></button></div></div>
+        <div class="selection-detail"><div><strong id="selected-title">ARC</strong><p id="selected-description">雷を宿す結晶ゴーレム。電撃と近接技を扱いやすい。</p><div class="move-summary"><span>B <b id="normal-move">THUNDER SHOT</b></span><span>MAX <b id="max-move">MAX THUNDER</b></span></div></div><div id="character-stats" class="character-stats" aria-label="キャラクター性能"></div></div>
+        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="arc">ARC</option><option value="jet">JET</option><option value="mist">MIST</option><option value="brick">BRICK</option><option value="spring">SPRING</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>ARC VS JET</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>WATCH CPU VS CPU</small></button></div></div>
         <div class="menu-help"><span class="desktop-instructions">移動 WASD / ← →　ジャンプ SPACE　コンボ J　ショット K　ガード L</span><span class="mobile-instructions">左手で移動、右手で攻撃。Aは長押しでコンボ。</span><span>B / K は通常技 → ゲージ満タンでMAX必殺</span></div>
       </section>
 
