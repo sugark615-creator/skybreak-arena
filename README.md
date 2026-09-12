@@ -1,4 +1,3 @@
-/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 21: /bin/ps: Operation not permitted
 # SKYBREAK ARENA — ブラッシュアップ版
 
 5体からファイターを選ぶ、スマホ横画面対応の2D対戦アクションです。
