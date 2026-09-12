@@ -1,5 +1,7 @@
 # SKYBREAK ARENA — ブラッシュアップ版
 
+[ブラウザでゲームをプレイ](https://sugark615-creator.github.io/skybreak-arena/)
+
 5体からファイターを選ぶ、スマホ横画面対応の2D対戦アクションです。
 
 ## 遊び方
