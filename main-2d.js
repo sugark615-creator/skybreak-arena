@@ -2,6 +2,7 @@ import './polish.css';
 import { loadPoseSheets, drawPose, frameFor, posePortrait } from './sprite-animation.js';
 import { drawSkyBackground, drawSkyPlatforms } from './sky-stage.js';
 import { createBattleAudio } from './battle-audio.mjs';
+import { QuickMatchClient } from './online/client.js';
 
 const canvas = document.querySelector('#arena');
 const ctx = canvas.getContext('2d');
@@ -18,9 +19,12 @@ const ui = {
   cpuUltimateMeter: $('cpu-ultimate-meter'), cpuUltimateValue: $('cpu-ultimate-value'),
   specialButton: document.querySelector('[data-action="special"]'),
   playerName: $('player-name'), cpuName: $('cpu-name'), playerSwatch: $('player-swatch'), cpuSwatch: $('cpu-swatch'),
-  callout: $('center-callout'), start: $('start-screen'), result: $('result-screen'), pause: $('pause-screen'),
-  startButton: $('start-button'), demoButton: $('demo-button'), pauseButton: $('pause-button'), fullscreenButton: $('fullscreen-button'), soundButton: $('sound-button'),
+  callout: $('center-callout'), start: $('start-screen'), result: $('result-screen'), pause: $('pause-screen'), online: $('online-screen'),
+  startButton: $('start-button'), demoButton: $('demo-button'), onlineButton: $('online-button'), onlineCancelButton: $('online-cancel-button'),
+  onlineTitle: $('online-title'), onlineStatus: $('online-status'), pauseButton: $('pause-button'), fullscreenButton: $('fullscreen-button'), soundButton: $('sound-button'),
 };
+const matchmakerEndpoint=import.meta.env.VITE_MATCHMAKER_URL||(['127.0.0.1','localhost'].includes(location.hostname)?'ws://127.0.0.1:8787/match':'');
+const ONLINE_SEND_INTERVAL=1/30;
 function loadImage(src) { const image = new Image(); image.src = src; return image; }
 const sprites = {
   arc: loadImage(new URL('./assets/arc-poses-v2.png', import.meta.url).href),
@@ -66,8 +70,13 @@ const pointerHolds = new Map();
 const particles = [], projectiles = [], afterimages = [], impactRings = [], damageTexts = [];
 let running=false,paused=false,matchTime=180,lastTime=performance.now(),accumulator=0,simTime=0;
 let calloutTimer,resultTimer,screenShake=0,hitStop=0,countdown=0,countdownCue=0,jumpBuffer=0,attackBuffer=0;
-let selectedCharacter='arc',assetsReady=false,bgmMuted=false,volume=.6,aiTimer=0,demoMode=false;
+let selectedCharacter='arc',assetsReady=false,bgmMuted=false,volume=.6,aiTimer=0,demoMode=false,onlineMode=false;
+let onlineClient=null,onlineRole=null,onlineSendClock=0,onlineSequence=0,onlineReady=false,remoteReady=false;
+let remoteInput={left:false,right:false,down:false,guard:false,attack:false,jumpSeq:0,attackSeq:0,specialSeq:0};
+let remoteActions={jumpSeq:0,attackSeq:0,specialSeq:0};
+const localActions={jumpSeq:0,attackSeq:0,specialSeq:0};
 let matchStats={hits:0,damage:0,max:0};
+let onlineRemoteStats={hits:0,damage:0,max:0};
 const settings = {difficulty:'normal',opponent:'auto'};
 function readPreferences() {
   try { const p=JSON.parse(localStorage.getItem('skybreak-preferences-v2') || '{}');
@@ -168,6 +177,177 @@ function clearInputs(){
   pointerHolds.forEach(active=>active.clear());
   fighters.forEach(f=>f.guard=false);document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));
 }
+function localInputState(){
+  return {
+    left:keys.has('KeyA')||keys.has('ArrowLeft')||held.left,
+    right:keys.has('KeyD')||keys.has('ArrowRight')||held.right,
+    down:keys.has('KeyS')||keys.has('ArrowDown'),
+    guard:keys.has('KeyL')||held.guard,
+    attack:held.attack||keys.has('KeyJ'),
+    ...localActions,
+  };
+}
+function queueJump(){jumpBuffer=.16;localActions.jumpSeq++;sendOnlineInput(true);}
+function queueAttack(){attackBuffer=.18;localActions.attackSeq++;sendOnlineInput(true);}
+function queueSpecial(){
+  localActions.specialSeq++;sendOnlineInput(true);
+  if(!(onlineMode&&onlineRole==='guest'))special(player);
+}
+function sendOnlineInput(force=false){
+  if(!onlineMode||onlineRole!=='guest'||!onlineClient)return;
+  if(!force&&onlineSendClock>0)return;
+  onlineSendClock=ONLINE_SEND_INTERVAL;
+  onlineClient.sendInput(localInputState(),++onlineSequence);
+}
+function safeNumber(value,fallback=0){return Number.isFinite(value)?value:fallback;}
+function fighterSnapshot(f){
+  const keys=['x','y','vx','vy','damage','ultimate','stocks','shield','facing','attackCooldown','specialCooldown','attackTimer','attackDuration','comboStep','comboWindow','stun','respawn','invincible','flash','motionPhase','landTimer','specialTimer','specialDuration','trailCooldown','coyote','airTime','jumps'];
+  const state={key:f.key,grounded:!!f.grounded,guard:!!f.guard,eliminated:!!f.eliminated,attackHasHit:!!f.attackHasHit};
+  for(const key of keys)state[key]=f[key];
+  return state;
+}
+function createOnlineSnapshot(){
+  return {
+    running,matchTime,countdown,hitStop,
+    fighters:[fighterSnapshot(player),fighterSnapshot(cpu)],
+    projectiles:projectiles.map(p=>({
+      owner:p.owner===player?0:1,type:p.type,maximum:!!p.maximum,x:p.x,y:p.y,previousX:p.previousX,
+      vx:p.vx,vy:p.vy,radius:p.radius,damage:p.damage,force:p.force,lift:p.lift,direction:p.direction,life:p.life,color:p.color,
+    })),
+  };
+}
+function applyFighterSnapshot(target,state){
+  if(!state||!roster[state.key])return;
+  const previousDamage=target.damage,previousStocks=target.stocks;
+  if(target.key!==state.key)applyCharacter(target,state.key);
+  const numeric=['x','y','vx','vy','damage','ultimate','stocks','shield','facing','attackCooldown','specialCooldown','attackTimer','attackDuration','comboStep','comboWindow','stun','respawn','invincible','flash','motionPhase','landTimer','specialTimer','specialDuration','trailCooldown','coyote','airTime','jumps'];
+  for(const key of numeric)target[key]=safeNumber(state[key],target[key]);
+  for(const key of ['grounded','guard','eliminated','attackHasHit'])target[key]=state[key]===true;
+  if(target.damage>previousDamage+.1){
+    burst(target.x+target.width/2,target.y+target.height*.45,'#fff4be',8);audio.combat(target.damage-previousDamage>=12?'heavy':'hit');
+  }
+  if(target.stocks<previousStocks){screenShake=10;announce('RING OUT!',.75);}
+}
+function applyOnlineSnapshot(snapshot){
+  if(!snapshot||!Array.isArray(snapshot.fighters)||snapshot.fighters.length!==2)return;
+  matchTime=Math.max(0,safeNumber(snapshot.matchTime,matchTime));
+  countdown=Math.max(0,safeNumber(snapshot.countdown,countdown));
+  hitStop=Math.max(0,safeNumber(snapshot.hitStop,hitStop));
+  // The host stores itself as fighter 0. On the guest screen fighter 1 remains the local player.
+  applyFighterSnapshot(cpu,snapshot.fighters[0]);
+  applyFighterSnapshot(player,snapshot.fighters[1]);
+  if(Array.isArray(snapshot.projectiles)){
+    projectiles.length=0;
+    for(const p of snapshot.projectiles.slice(0,24))projectiles.push({...p,owner:p.owner===0?cpu:player});
+  }
+}
+function updateOnlineGuest(dt){
+  onlineSendClock=Math.max(0,onlineSendClock-dt);sendOnlineInput();
+  simTime+=dt;screenShake=Math.max(0,screenShake-35*dt);
+  if(countdown>0)countdown=Math.max(0,countdown-dt);else matchTime=Math.max(0,matchTime-dt);
+  for(const f of fighters){
+    f.x+=f.vx*dt;f.y+=f.vy*dt;
+    for(const key of ['attackTimer','specialTimer','stun','flash','landTimer','launchTimer'])f[key]=Math.max(0,f[key]-dt);
+    f.motionPhase+=dt*(2.4+Math.abs(f.vx)/34);
+  }
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];p.previousX=p.x;p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)projectiles.splice(i,1);
+  }
+  updateEffects(dt,false);
+}
+function sendOnlineSnapshot(force=false){
+  if(!onlineMode||onlineRole!=='host'||!onlineClient)return;
+  if(!force&&onlineSendClock>0)return;
+  onlineSendClock=ONLINE_SEND_INTERVAL;
+  onlineClient.sendSnapshot(createOnlineSnapshot(),++onlineSequence);
+}
+function applyRemoteControl(f,dt){
+  if(!canAct(f))return;
+  const direction=(remoteInput.right?1:0)-(remoteInput.left?1:0);
+  f.guard=remoteInput.guard&&f.shield>0&&f.attackTimer<=0&&f.specialTimer<=0;
+  if(direction){f.vx+=direction*f.accel*(f.grounded?1:.68)*dt;f.facing=direction;}
+  if(remoteInput.down&&!f.grounded)f.vy+=1000*dt;
+  if(remoteInput.jumpSeq!==remoteActions.jumpSeq){remoteActions.jumpSeq=remoteInput.jumpSeq;jump(f);}
+  if(remoteInput.attackSeq!==remoteActions.attackSeq){remoteActions.attackSeq=remoteInput.attackSeq;melee(f);}
+  if(remoteInput.specialSeq!==remoteActions.specialSeq){remoteActions.specialSeq=remoteInput.specialSeq;special(f);}
+  if(remoteInput.attack)melee(f);
+}
+function updateOnlineHudCharacters(){
+  for(const [f,prefix] of [[player,'player'],[cpu,'cpu']]){
+    ui[prefix+'Name'].textContent=f.name;ui[prefix+'Swatch'].style.background=f.color;
+    document.querySelector('.'+prefix+'-card').style.setProperty('--fighter',f.color);
+  }
+}
+function setOnlineSearchUi(title,status,state=''){
+  ui.onlineTitle.textContent=title;ui.onlineStatus.textContent=status;
+  ui.online.classList.toggle('failed',state==='failed');ui.online.classList.toggle('matched',state==='matched');
+}
+function disconnectOnline(){
+  onlineClient?.disconnect();onlineClient=null;onlineMode=false;onlineRole=null;onlineReady=false;remoteReady=false;
+  remoteInput={left:false,right:false,down:false,guard:false,attack:false,jumpSeq:0,attackSeq:0,specialSeq:0};
+  remoteActions={jumpSeq:0,attackSeq:0,specialSeq:0};
+}
+function cancelQuickMatch(){
+  disconnectOnline();ui.online.classList.remove('visible');ui.start.classList.add('visible');shell.classList.add('in-menu');
+  document.querySelector('[data-character="'+selectedCharacter+'"]').focus();
+}
+function beginQuickMatch(){
+  if(!assetsReady||running)return;
+  void audio.unlock();disconnectOnline();onlineMode=true;onlineSequence=0;onlineSendClock=0;
+  $('online-fighter-name').textContent=player.name;ui.start.classList.remove('visible');ui.online.classList.add('visible');
+  setOnlineSearchUi('対戦相手を探しています','同じタイミングで参加したプレイヤーと自動で対戦します。');
+  if(!matchmakerEndpoint){setOnlineSearchUi('オンライン対戦は準備中です','対戦サーバーを公開した後に利用できます。','failed');return;}
+  onlineClient=new QuickMatchClient(matchmakerEndpoint);
+  onlineClient.addEventListener('match_found',event=>{
+    onlineRole=event.detail.role;applyCharacter(cpu,event.detail.opponentFighter);updateOnlineHudCharacters();
+    setOnlineSearchUi('対戦相手が見つかりました',player.name+' VS '+cpu.name+'　接続を確認しています。','matched');
+    onlineReady=true;onlineClient.send('ready');
+  });
+  onlineClient.addEventListener('peer_message',event=>handlePeerMessage(event.detail.message));
+  onlineClient.addEventListener('opponent_left',()=>handleOpponentLeft());
+  onlineClient.addEventListener('error',()=>setOnlineSearchUi('接続できませんでした','通信環境を確認して、もう一度お試しください。','failed'));
+  onlineClient.addEventListener('status',event=>{
+    if(event.detail.status==='disconnected'&&!running&&ui.online.classList.contains('visible'))setOnlineSearchUi('接続が切れました','キャンセルして、もう一度お試しください。','failed');
+  });
+  try{onlineClient.connect(selectedCharacter);}catch(error){setOnlineSearchUi('接続できませんでした',error.message,'failed');}
+}
+function beginOnlineBattle(){
+  if(running)return;
+  resetMatch(false,true);
+  if(onlineRole==='host')onlineClient.send('combat_event',{event:{type:'start',snapshot:createOnlineSnapshot()}});
+}
+function handlePeerMessage(message){
+  if(!message)return;
+  if(message.type==='ready'){
+    remoteReady=true;if(onlineRole==='host'&&onlineReady)beginOnlineBattle();return;
+  }
+  if(message.type==='input'&&onlineRole==='host'){
+    const input=message.input||{};
+    remoteInput={
+      left:input.left===true,right:input.right===true,down:input.down===true,guard:input.guard===true,attack:input.attack===true,
+      jumpSeq:safeNumber(input.jumpSeq,remoteInput.jumpSeq),attackSeq:safeNumber(input.attackSeq,remoteInput.attackSeq),specialSeq:safeNumber(input.specialSeq,remoteInput.specialSeq),
+    };return;
+  }
+  if(message.type==='snapshot'&&onlineRole==='guest'&&running){applyOnlineSnapshot(message.snapshot);return;}
+  if(message.type==='combat_event'){
+    const event=message.event;
+    if(event?.type==='start'&&onlineRole==='guest'){
+      beginOnlineBattle();applyOnlineSnapshot(event.snapshot);return;
+    }
+    if(event?.type==='match_end'&&onlineRole==='guest'){
+      if(event.guestStats)matchStats={
+        hits:Math.max(0,safeNumber(event.guestStats.hits)),
+        damage:Math.max(0,safeNumber(event.guestStats.damage)),
+        max:Math.max(0,safeNumber(event.guestStats.max)),
+      };
+      finishMatch(event.hostWon===null?null:!event.hostWon);
+    }
+  }
+}
+function handleOpponentLeft(){
+  if(running){finishMatch(true);$('result-copy').textContent='対戦相手が退出しました。';}
+  else setOnlineSearchUi('対戦相手が退出しました','キャンセルして、もう一度お試しください。','failed');
+}
 function resetFighter(f,full=false){
   Object.assign(f,{x:f.startX,y:full?690-f.height:220,vx:0,vy:0,damage:0,shield:100,grounded:full,
     jumps:f.airJumps,airTime:0,launchTimer:0,coyote:0,facing:f.baseFacing,attackCooldown:0,specialCooldown:0,attackTimer:0,comboStep:0,aiTimer:.1+Math.random()*.15,
@@ -188,28 +368,33 @@ function refreshDemoFighters(){
   }
 }
 function setModeUi(){
-  $('player-role').textContent=demoMode?'CPU 1':'YOU';$('cpu-role').textContent=demoMode?'CPU 2':'CPU';
-  shell.classList.toggle('demo-mode',demoMode);
+  $('player-role').textContent=demoMode?'CPU 1':'YOU';$('cpu-role').textContent=demoMode?'CPU 2':onlineMode?'ONLINE':'CPU';
+  shell.classList.toggle('demo-mode',demoMode);shell.classList.toggle('online-mode',onlineMode);
 }
-function resetMatch(asDemo=false){
+function resetMatch(asDemo=false,asOnline=false){
   clearTimeout(resultTimer);clearTimeout(calloutTimer);clearInputs();demoMode=asDemo;
-  if(demoMode)refreshDemoFighters();else refreshOpponent(true);setModeUi();
+  if(!asOnline){onlineMode=false;onlineRole=null;}
+  if(demoMode)refreshDemoFighters();else if(!onlineMode)refreshOpponent(true);setModeUi();
   running=true;paused=false;matchTime=180;accumulator=0;lastTime=performance.now();countdown=2.4;countdownCue=3;hitStop=0;aiTimer=.6;
-  matchStats={hits:0,damage:0,max:0};
+  onlineSendClock=0;remoteActions={jumpSeq:remoteInput.jumpSeq,attackSeq:remoteInput.attackSeq,specialSeq:remoteInput.specialSeq};
+  matchStats={hits:0,damage:0,max:0};onlineRemoteStats={hits:0,damage:0,max:0};
   fighters.forEach(f=>{f.stocks=3;resetFighter(f,true);});
   particles.length=projectiles.length=afterimages.length=impactRings.length=damageTexts.length=0;
-  [ui.start,ui.result,ui.pause].forEach(el=>el.classList.remove('visible'));shell.classList.remove('in-menu');
-  setPlaySurfaces(true);ui.pauseButton.textContent='Ⅱ';ui.pauseButton.setAttribute('aria-label','一時停止');
+  [ui.start,ui.result,ui.pause,ui.online].forEach(el=>el.classList.remove('visible'));shell.classList.remove('in-menu');
+  setPlaySurfaces(true);ui.pauseButton.disabled=onlineMode;ui.pauseButton.textContent=onlineMode?'LIVE':'Ⅱ';ui.pauseButton.setAttribute('aria-label',onlineMode?'オンライン対戦中':'一時停止');
   document.activeElement?.blur();announce('3',.8);beep(320,.12,'triangle',.05);startBgm();updateHud();resize();
 }
 function showMenu(){
   running=false;paused=false;countdown=0;clearTimeout(resultTimer);clearTimeout(calloutTimer);clearInputs();stopBgm();
+  disconnectOnline();
   projectiles.length=particles.length=afterimages.length=damageTexts.length=impactRings.length=0;
-  ui.result.classList.remove('visible');ui.pause.classList.remove('visible');ui.start.classList.add('visible');ui.callout.classList.remove('show');
-  demoMode=false;shell.classList.remove('demo-mode');shell.classList.add('in-menu');setModeUi();setPlaySurfaces(false);selectCharacter(selectedCharacter);
+  ui.result.classList.remove('visible');ui.pause.classList.remove('visible');ui.online.classList.remove('visible');ui.start.classList.add('visible');ui.callout.classList.remove('show');
+  demoMode=false;shell.classList.remove('demo-mode','online-mode');shell.classList.add('in-menu');setModeUi();setPlaySurfaces(false);selectCharacter(selectedCharacter);
+  ui.pauseButton.disabled=false;ui.pauseButton.textContent='Ⅱ';ui.pauseButton.setAttribute('aria-label','一時停止');
   document.querySelector('[data-character="'+selectedCharacter+'"]').focus();
 }
 function setPaused(value){
+  if(onlineMode){announce('ONLINE BATTLE',.55);return;}
   if(!running || paused===value)return;
   paused=value;clearInputs();accumulator=0;lastTime=performance.now();ui.pause.classList.toggle('visible',paused);
   ui.pauseButton.textContent=paused?'▶':'Ⅱ';ui.pauseButton.setAttribute('aria-label',paused?'再開':'一時停止');
@@ -242,7 +427,7 @@ function charge(f,amount){
 function special(f){
   if(!canAct(f)||f.guard||f.specialCooldown>0||f.attackTimer>0)return false;
   const maximum=f.ultimate>=100;
-  if(maximum){f.ultimate=0;if(f===player)matchStats.max++;}
+  if(maximum){f.ultimate=0;if(f===player)matchStats.max++;else if(onlineMode)onlineRemoteStats.max++;}
   f.specialCooldown=maximum?1.4:f.cooldown;f.specialDuration=maximum?.7:.28;f.specialTimer=f.specialDuration;
   const dir=f.facing;const x=f.x+f.width/2+dir*(f.width*.5+10),y=f.y+f.height*.48;
   const spreads=maximum&&f.key==='mist'?[-.25,0,.25]:[0];
@@ -339,6 +524,7 @@ function hit(target,attacker,damage,force,lift,direction,maximum=false){
   target.stun=Math.min(.65,.18+damage*.012);target.attackTimer=0;target.specialTimer=0;target.flash=.12;
   if(!maximum)charge(attacker,damage*1.6);charge(target,damage*.85);
   if(attacker===player){matchStats.hits++;matchStats.damage+=damage;}
+  else if(onlineMode){onlineRemoteStats.hits++;onlineRemoteStats.damage+=damage;}
   hitStop=Math.max(hitStop,maximum?.055:damage>=12?.018:0);screenShake=Math.min(8,maximum?8:2+damage*.17);
   const x=target.x+target.width/2,y=target.y+target.height*.4;
   burst(x,y,attacker.color,maximum?22:10);impactRings.push({x,y,radius:12,life:.24,color:maximum?'#fff':attacker.color});
@@ -354,15 +540,18 @@ function ringOut(f){
 }
 function finishMatch(playerWon){
   if(!running)return;
+  if(onlineMode&&onlineRole==='host')onlineClient?.send('combat_event',{event:{type:'match_end',hostWon:playerWon,guestStats:onlineRemoteStats}});
   running=false;paused=false;countdown=0;clearInputs();projectiles.length=0;stopBgm();
   const winner=playerWon===null?null:playerWon?player:cpu;
   $('result-title').textContent=playerWon===null?'DRAW':demoMode?winner.name+' WINS':playerWon?'VICTORY':'DEFEAT';$('result-title').style.color=winner?.color||'#b9d3ec';
-  $('result-copy').textContent=playerWon===null?'引き分け。もう一戦！':demoMode?'CPU同士のデモ対戦は'+winner.name+'の勝利！':playerWon?player.name+'の勝利！':cpu.name+'の勝利。もう一度挑戦しよう。';
+  $('result-copy').textContent=playerWon===null?'引き分け。もう一戦！':demoMode?'CPU同士のデモ対戦は'+winner.name+'の勝利！':onlineMode?(playerWon?'オンライン対戦に勝利しました！':'オンライン対戦は相手の勝利です。'):playerWon?player.name+'の勝利！':cpu.name+'の勝利。もう一度挑戦しよう。';
   const stats=$('result-stats');stats.replaceChildren();
   const resultRows=demoMode?[['CPU 1 ヒット',matchStats.hits],['CPU 1 ダメージ',Math.round(matchStats.damage)+'%'],['CPU 1 MAX',matchStats.max]]:[['ヒット数',matchStats.hits],['与えたダメージ',Math.round(matchStats.damage)+'%'],['MAX発動',matchStats.max]];
   resultRows.forEach(([name,value])=>{
     const span=document.createElement('span');span.textContent=name;const b=document.createElement('b');b.textContent=value;span.append(b);stats.append(span);
   });
+  $('restart-button').querySelector('span').textContent=onlineMode?'次の対戦':'もう一度';
+  $('restart-button').querySelector('small').textContent=onlineMode?'QUICK MATCH':'REMATCH';
   resultTimer=setTimeout(()=>{ui.result.classList.add('visible');setPlaySurfaces(false);$('restart-button').focus();},550);
   beep(demoMode||playerWon?690:110,.6,demoMode||playerWon?'triangle':'sawtooth',.07);
 }
@@ -550,21 +739,26 @@ function updateHud(){
 }
 function simulate(dt){
   if(!running||paused)return;
+  if(onlineMode&&onlineRole==='guest'){updateOnlineGuest(dt);return;}
   simTime+=dt;screenShake=Math.max(0,screenShake-35*dt);
   if(countdown>0){countdown=Math.max(0,countdown-dt);const cue=Math.ceil(countdown/.8);
-    if(cue!==countdownCue){countdownCue=cue;announce(cue>0?String(cue):'FIGHT!',cue>0?.8:.65);beep(cue>0?320:600,.1,'triangle',.05);}return;
+    if(cue!==countdownCue){countdownCue=cue;announce(cue>0?String(cue):'FIGHT!',cue>0?.8:.65);beep(cue>0?320:600,.1,'triangle',.05);}
+    if(onlineMode){onlineSendClock=Math.max(0,onlineSendClock-dt);sendOnlineSnapshot();}return;
   }
   matchTime=Math.max(0,matchTime-dt);
   if(matchTime<=0){const score=player.stocks*1000-player.damage-(cpu.stocks*1000-cpu.damage);finishMatch(score===0?null:score>0);return;}
   jumpBuffer=Math.max(0,jumpBuffer-dt);attackBuffer=Math.max(0,attackBuffer-dt);
   if(hitStop>0){hitStop=Math.max(0,hitStop-dt);return;}
-  if(demoMode){aiControl(player,cpu,dt);aiControl(cpu,player,dt);}else{playerControl(dt);aiControl(cpu,player,dt);}
+  if(demoMode){aiControl(player,cpu,dt);aiControl(cpu,player,dt);}
+  else if(onlineMode){playerControl(dt);applyRemoteControl(cpu,dt);}
+  else {playerControl(dt);aiControl(cpu,player,dt);}
   for(const f of fighters){if(!running)return;updateFighter(f,dt);}
   if(fighters.some(f=>f.stocks<=0)){finishMatch(player.stocks<=0&&cpu.stocks<=0?null:cpu.stocks<=0);return;}
   if(!running)return;
   const contacts=[resolveMelee(player,cpu),resolveMelee(cpu,player)].filter(Boolean);
   for(const contact of contacts)hit(...contact);
   updateEffects(dt,true);
+  if(onlineMode){onlineSendClock=Math.max(0,onlineSendClock-dt);sendOnlineSnapshot();}
 }
 function tick(now){
   const elapsed=Math.min(.1,(now-lastTime)/1000);lastTime=now;
@@ -579,9 +773,9 @@ addEventListener('keydown',event=>{
   if(!running||paused||countdown>0||demoMode)return;
   if(gameKeys.includes(event.code))event.preventDefault();
   if(!event.repeat&&!keys.has(event.code)){
-    if(['Space','KeyW','ArrowUp'].includes(event.code))jumpBuffer=.16;
-    if(event.code==='KeyJ')attackBuffer=.18;
-    if(event.code==='KeyK')special(player);
+    if(['Space','KeyW','ArrowUp'].includes(event.code))queueJump();
+    if(event.code==='KeyJ')queueAttack();
+    if(event.code==='KeyK')queueSpecial();
   }
   keys.add(event.code);
 });
@@ -597,18 +791,19 @@ document.querySelectorAll('[data-action]').forEach(button=>{
   button.addEventListener('pointerdown',event=>{
     event.preventDefault();if(!running||paused||countdown>0||demoMode)return;
     try{button.setPointerCapture(event.pointerId);}catch{}button.classList.add('pressed');
-    if(button.dataset.action==='jump')jumpBuffer=.16;
-    if(button.dataset.action==='attack'){held.attack=true;attackBuffer=.18;}
-    if(button.dataset.action==='special')special(player);haptic(8);
+    if(button.dataset.action==='jump')queueJump();
+    if(button.dataset.action==='attack'){held.attack=true;queueAttack();}
+    if(button.dataset.action==='special')queueSpecial();haptic(8);
   });
   const up=()=>{button.classList.remove('pressed');if(button.dataset.action==='attack')held.attack=false;};
   for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,up);
   // Keyboard activation of the touch buttons remains available.
-  button.addEventListener('click',event=>{if(event.detail===0){if(button.dataset.action==='jump')jumpBuffer=.16;if(button.dataset.action==='attack')attackBuffer=.18;if(button.dataset.action==='special')special(player);}});
+  button.addEventListener('click',event=>{if(event.detail===0){if(button.dataset.action==='jump')queueJump();if(button.dataset.action==='attack')queueAttack();if(button.dataset.action==='special')queueSpecial();}});
 });
 ui.startButton.addEventListener('click',enterMobilePlayMode);
 ui.demoButton.addEventListener('click',enterDemoMode);
-$('restart-button').addEventListener('click',()=>demoMode?enterDemoMode():enterMobilePlayMode());
+ui.onlineButton.addEventListener('click',beginQuickMatch);ui.onlineCancelButton.addEventListener('click',cancelQuickMatch);
+$('restart-button').addEventListener('click',()=>{if(onlineMode){disconnectOnline();ui.result.classList.remove('visible');shell.classList.add('in-menu');beginQuickMatch();}else demoMode?enterDemoMode():enterMobilePlayMode();});
 $('change-character-button').addEventListener('click',showMenu);$('menu-button').addEventListener('click',showMenu);
 $('resume-button').addEventListener('click',()=>setPaused(false));
 ui.pauseButton.addEventListener('click',togglePause);ui.fullscreenButton.addEventListener('click',toggleFullscreen);
@@ -619,8 +814,8 @@ $('opponent-select').addEventListener('change',event=>{settings.opponent=event.t
 $('difficulty-select').addEventListener('change',event=>{settings.difficulty=event.target.value;savePreferences();});
 addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
 addEventListener('orientationchange',()=>setTimeout(resize,100));
-addEventListener('blur',()=>{clearInputs();setPaused(true);});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();setPaused(true);}lastTime=performance.now();accumulator=0;});
+addEventListener('blur',()=>{clearInputs();if(!onlineMode)setPaused(true);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(!onlineMode)setPaused(true);}lastTime=performance.now();accumulator=0;});
 shell.addEventListener('contextmenu',event=>event.preventDefault());
 document.addEventListener('fullscreenchange',()=>{ui.fullscreenButton.textContent=document.fullscreenElement?'×':'⛶';resize();});
 // Keep keyboard focus in the pause dialog.
@@ -638,7 +833,8 @@ Promise.all([...Object.values(sprites).map(image=>image.decode()),loadPoseSheets
     const portrait=posePortrait(key);sprites[key].src=portrait;
     document.querySelectorAll('[data-character-image="'+key+'"]').forEach(image=>image.src=portrait);
   }
-  assetsReady=true;ui.startButton.disabled=false;ui.demoButton.disabled=false;ui.startButton.querySelector('span').textContent='このファイターで対戦';
+  assetsReady=true;ui.startButton.disabled=false;ui.demoButton.disabled=false;ui.onlineButton.disabled=false;ui.startButton.querySelector('span').textContent='このファイターで対戦';
+  if(!matchmakerEndpoint)ui.onlineButton.querySelector('small').textContent='SERVER SETUP NEEDED';
 }).catch(()=>{ui.startButton.querySelector('span').textContent='画像を読み込めません';ui.demoButton.querySelector('span').textContent='画像を読み込めません';$('selected-description').textContent='ページを再読み込みしてください。';});
 function registerWebMcp(){
   const context=document.modelContext;if(!context?.registerTool)return;

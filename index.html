@@ -68,8 +68,17 @@
           <button class="character-option" data-character="spring" style="--fighter:#54d96b" aria-pressed="false"><span class="roster-number">05</span><img data-character-image="spring" alt="" /><strong>SPRING</strong><small>ハイジャンプ</small></button>
         </div>
         <div class="selection-detail"><div><strong id="selected-title">ARC</strong><p id="selected-description">雷を宿す結晶ゴーレム。電撃と近接技を扱いやすい。</p><div class="move-summary"><span>B <b id="normal-move">THUNDER SHOT</b></span><span>MAX <b id="max-move">MAX THUNDER</b></span></div></div><div id="character-stats" class="character-stats" aria-label="キャラクター性能"></div></div>
-        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="arc">ARC</option><option value="jet">JET</option><option value="mist">MIST</option><option value="brick">BRICK</option><option value="spring">SPRING</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>ARC VS JET</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>WATCH CPU VS CPU</small></button></div></div>
+        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="arc">ARC</option><option value="jet">JET</option><option value="mist">MIST</option><option value="brick">BRICK</option><option value="spring">SPRING</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="online-button" class="online-button" disabled><span>オンライン対戦</span><small>QUICK MATCH</small></button><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>ARC VS JET</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>WATCH CPU VS CPU</small></button></div></div>
         <div class="menu-help"><span class="desktop-instructions">移動 WASD / ← →　ジャンプ SPACE　コンボ J　ショット K　ガード L</span><span class="mobile-instructions">左手で移動、右手で攻撃。Aは長押しでコンボ。</span><span>B / K は通常技 → ゲージ満タンでMAX必殺</span></div>
+      </section>
+
+      <section id="online-screen" class="modal-screen online-screen" role="dialog" aria-modal="true" aria-labelledby="online-title">
+        <div class="eyebrow">ONLINE BATTLE / QUICK MATCH</div>
+        <div class="matchmaking-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+        <h2 id="online-title">対戦相手を探しています</h2>
+        <p id="online-status" role="status" aria-live="polite">同じタイミングで参加したプレイヤーと自動で対戦します。</p>
+        <div class="online-fighter"><span>選択中</span><strong id="online-fighter-name">ARC</strong></div>
+        <button id="online-cancel-button" class="secondary-button">キャンセル</button>
       </section>
 
       <section id="result-screen" class="modal-screen">
