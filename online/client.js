@@ -48,8 +48,14 @@ export class QuickMatchClient extends EventTarget {
       this.emit('status', { status: this.status });
       this.heartbeatTimer = window.setInterval(() => this.send('heartbeat'), HEARTBEAT_INTERVAL_MS);
     });
-    socket.addEventListener('message', event => this.receive(event.data));
-    socket.addEventListener('error', () => this.emit('error', { message: '対戦サーバーに接続できません。' }));
+    socket.addEventListener('message', event => {
+      if (this.socket !== socket) return;
+      this.receive(event.data);
+    });
+    socket.addEventListener('error', () => {
+      if (this.socket !== socket) return;
+      this.emit('error', { message: '対戦サーバーに接続できません。' });
+    });
     socket.addEventListener('close', event => {
       if (this.socket !== socket) return;
       this.clearTimers();
@@ -113,4 +119,3 @@ export class QuickMatchClient extends EventTarget {
     this.dispatchEvent(new CustomEvent(type, { detail }));
   }
 }
-

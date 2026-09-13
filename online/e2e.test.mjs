@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
+const baseURL = process.env.ARENA_URL || 'http://127.0.0.1:5196/';
 const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 const errors = [];
 
@@ -13,7 +14,9 @@ async function createPlayer(fighter) {
     const instrumentation = `\nwindow.__onlineQA=()=>({running,onlineMode,onlineRole,player:{key:player.key,x:player.x,damage:player.damage,combo:player.comboStep},opponent:{key:cpu.key,x:cpu.x,damage:cpu.damage,combo:cpu.comboStep}});window.__onlineClose=()=>{player.x=700;cpu.x=810;player.y=690-player.height;cpu.y=690-cpu.height;player.vx=cpu.vx=0;};`;
     await route.fulfill({ response, body: (await response.text()) + instrumentation });
   });
-  await page.goto('http://127.0.0.1:5196/', { waitUntil: 'networkidle' });
+  await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await page.locator('#title-start-button:not([disabled])').click();
+  await page.locator('#title-screen').waitFor({ state: 'hidden' });
   await page.locator('#online-button:not([disabled])').waitFor();
   await page.locator(`[data-character="${fighter}"]`).click();
   return { context, page };

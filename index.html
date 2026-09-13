@@ -9,14 +9,14 @@
     <title>SKYBREAK ARENA 2D</title>
   </head>
   <body>
-    <main id="game-shell" class="in-menu">
+    <main id="game-shell" class="in-menu in-title">
       <canvas id="arena" aria-label="2D対戦アクションゲーム画面"></canvas>
 
       <header class="topbar">
         <div class="brand"><span class="brand-mark">SB</span><span>SKYBREAK <b>ARENA</b></span></div>
         <div id="timer" class="timer">03:00</div>
         <div class="top-actions">
-          <button id="sound-button" class="icon-button" aria-label="BGMを停止" aria-pressed="false">♪</button>
+          <button id="sound-button" class="icon-button" data-sound-toggle aria-label="音をミュート" aria-pressed="false">♪</button>
           <button id="fullscreen-button" class="icon-button" aria-label="全画面表示">⛶</button>
           <button id="pause-button" class="icon-button" aria-label="一時停止">Ⅱ</button>
         </div>
@@ -24,75 +24,110 @@
 
       <section class="hud" aria-label="対戦状況">
         <article class="fighter-card player-card">
-          <div class="fighter-name"><span id="player-swatch" class="swatch yellow"></span><span id="player-name">ARC</span> <small id="player-role">YOU</small></div>
+          <div class="fighter-name"><span id="player-swatch" class="swatch yellow"></span><span id="player-name">アーク</span> <small id="player-role">自分</small></div>
           <div class="fighter-stats"><strong id="player-damage">0</strong><span>%</span></div>
           <div class="stocks" id="player-stocks" aria-label="残りストック3">◆ ◆ ◆</div>
-          <div class="shield-label">GUARD</div><div class="meter"><i id="player-shield"></i></div>
+          <div class="shield-label">ガード</div><div class="meter"><i id="player-shield"></i></div>
           <div class="ultimate-row"><span>MAX</span><div class="ultimate-meter"><i id="ultimate-meter"></i></div><b id="ultimate-value">0%</b></div>
         </article>
         <article class="fighter-card cpu-card">
-          <div class="fighter-name"><span id="cpu-swatch" class="swatch blue"></span><span id="cpu-name">JET</span> <small id="cpu-role">CPU</small></div>
+          <div class="fighter-name"><span id="cpu-swatch" class="swatch blue"></span><span id="cpu-name">ジェット</span> <small id="cpu-role">CPU</small></div>
           <div class="fighter-stats"><strong id="cpu-damage">0</strong><span>%</span></div>
           <div class="stocks" id="cpu-stocks" aria-label="CPU残りストック3">◆ ◆ ◆</div>
-          <div class="shield-label">GUARD</div><div class="meter"><i id="cpu-shield"></i></div>
+          <div class="shield-label">ガード</div><div class="meter"><i id="cpu-shield"></i></div>
           <div class="ultimate-row"><span>MAX</span><div class="ultimate-meter"><i id="cpu-ultimate-meter"></i></div><b id="cpu-ultimate-value">0%</b></div>
         </article>
       </section>
-      <div id="center-callout" class="center-callout" role="status" aria-live="polite">READY</div>
+      <div id="center-callout" class="center-callout" role="status" aria-live="polite">スタンバイ</div>
 
       <aside class="controls-hint" id="controls-hint">
         <span><kbd>WASD</kbd> 移動</span><span><kbd>SPACE</kbd> ジャンプ</span>
-        <span><kbd>J</kbd> 近接コンボ</span><span><kbd>K</kbd> 通常技／MAX必殺</span><span><kbd>L</kbd> ガード</span>
+        <span><kbd>J</kbd> 近接コンボ</span><span><kbd>K</kbd> 通常技／MAX必殺</span><span><kbd>L</kbd> ガード</span><span><kbd>ESC</kbd> メニュー／退出</span>
       </aside>
 
       <section class="touch-controls" aria-label="タッチ操作">
-        <div class="move-pad" aria-label="移動">
-          <button data-hold="left" aria-label="左へ"><span>◀</span></button>
-          <button data-hold="right" aria-label="右へ"><span>▶</span></button>
+        <div class="move-pad" role="group" aria-label="左スティック：左右に倒して移動、指を離すと停止">
+          <span class="stick-ring" aria-hidden="true"></span>
+          <span class="stick-knob" aria-hidden="true"></span>
+          <span class="stick-label" aria-hidden="true">移動</span>
         </div>
-        <div class="action-pad">
-          <button data-action="jump" class="action jump" aria-label="ジャンプ"><b>↑</b><small>ジャンプ</small></button>
-          <button data-action="attack" class="action attack" aria-label="近接攻撃（長押しでコンボ）"><b>A</b><small>コンボ</small></button>
+        <div class="action-pad" role="group" aria-label="右の4ボタン：上ジャンプ、右攻撃、下ショット、左ガード">
+          <button data-action="jump" class="action jump" aria-label="ジャンプ"><b>X</b><small>ジャンプ</small></button>
+          <button data-action="attack" class="action attack" aria-label="近接攻撃（長押しでコンボ）"><b>A</b><small>攻撃</small></button>
           <button data-action="special" class="action special" aria-label="通常技"><b>B</b><small id="b-label">ショット</small></button>
-          <button data-hold="guard" class="action guard" aria-label="ガード"><b>G</b><small>ガード</small></button>
+          <button data-hold="guard" class="action guard" aria-label="ガード"><b>Y</b><small>ガード</small></button>
         </div>
       </section>
 
-      <section id="start-screen" class="modal-screen start-screen visible" aria-labelledby="select-title">
-        <div class="menu-heading"><div><div class="eyebrow">SKYBREAK ARENA / SKY SANCTUARY</div><h1 id="select-title">ファイターを選択</h1></div><span class="mode-tag">1 PLAYER · 3 STOCK</span></div>
-        <div class="character-select" role="group" aria-label="キャラクター選択">
-          <button class="character-option selected" data-character="arc" style="--fighter:#ffd62e" aria-pressed="true"><span class="roster-number">01</span><img data-character-image="arc" alt="" /><strong>ARC</strong><small>電撃バランス</small></button>
-          <button class="character-option" data-character="jet" style="--fighter:#65a8ff" aria-pressed="false"><span class="roster-number">02</span><img data-character-image="jet" alt="" /><strong>JET</strong><small>スピード</small></button>
-          <button class="character-option" data-character="mist" style="--fighter:#55d6ce" aria-pressed="false"><span class="roster-number">03</span><img data-character-image="mist" alt="" /><strong>MIST</strong><small>空中アクション</small></button>
-          <button class="character-option" data-character="brick" style="--fighter:#ff5549" aria-pressed="false"><span class="roster-number">04</span><img data-character-image="brick" alt="" /><strong>BRICK</strong><small>パワー</small></button>
-          <button class="character-option" data-character="spring" style="--fighter:#54d96b" aria-pressed="false"><span class="roster-number">05</span><img data-character-image="spring" alt="" /><strong>SPRING</strong><small>ハイジャンプ</small></button>
+      <section id="title-screen" class="modal-screen title-screen visible" aria-labelledby="title-logo">
+        <div class="title-scenery" aria-hidden="true"><i class="title-horizon"></i><i class="title-island title-island--far"></i><i class="title-island title-island--near"></i></div>
+        <div class="title-topline"><span>空中対戦アクション</span><button id="title-sound-button" type="button" class="labelled-sound" data-sound-toggle aria-label="音をミュート" aria-pressed="false">音 ON</button></div>
+        <div class="title-layout">
+          <div class="title-copy">
+            <p class="title-kicker"><span></span> 空の向こうへ、ふっとばせ。</p>
+            <h1 id="title-logo" class="title-logo"><span>SKYBREAK</span><b>ARENA</b></h1>
+            <p class="title-reading">スカイブレイク アリーナ</p>
+          </div>
+          <div class="title-lineup" aria-hidden="true">
+            <div class="title-orbit"></div><div class="title-stage"><i></i></div>
+            <img class="title-fighter title-fighter--brick" data-character-image="brick" alt="" />
+            <img class="title-fighter title-fighter--spring" data-character-image="spring" alt="" />
+            <img class="title-fighter title-fighter--mist" data-character-image="mist" alt="" />
+            <img class="title-fighter title-fighter--jet" data-character-image="jet" alt="" />
+            <img class="title-fighter title-fighter--arc" data-character-image="arc" alt="" />
+            <span class="title-lineup-caption">5人のファイター、ひとつの空。</span>
+          </div>
+          <div class="title-entry">
+            <button id="title-start-button" class="title-start-button" type="button" disabled><span id="title-start-label">読み込み中</span><span class="title-start-arrow" aria-hidden="true">→</span></button>
+            <p class="title-key-hint"><kbd>Enter</kbd> でもスタート</p>
+            <p id="title-status" class="title-status" role="status">ファイターを読み込んでいます…</p>
+            <button id="title-retry-button" type="button" class="secondary-button" hidden>再読み込み</button>
+            <noscript>プレイするには、ブラウザのJavaScriptを有効にしてください。</noscript>
+          </div>
         </div>
-        <div class="selection-detail"><div><strong id="selected-title">ARC</strong><p id="selected-description">雷を宿す結晶ゴーレム。電撃と近接技を扱いやすい。</p><div class="move-summary"><span>B <b id="normal-move">THUNDER SHOT</b></span><span>MAX <b id="max-move">MAX THUNDER</b></span></div></div><div id="character-stats" class="character-stats" aria-label="キャラクター性能"></div></div>
-        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="arc">ARC</option><option value="jet">JET</option><option value="mist">MIST</option><option value="brick">BRICK</option><option value="spring">SPRING</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="online-button" class="online-button" disabled><span>オンライン対戦</span><small>QUICK MATCH</small></button><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>ARC VS JET</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>WATCH CPU VS CPU</small></button></div></div>
-        <div class="menu-help"><span class="desktop-instructions">移動 WASD / ← →　ジャンプ SPACE　コンボ J　ショット K　ガード L</span><span class="mobile-instructions">左手で移動、右手で攻撃。Aは長押しでコンボ。</span><span>B / K は通常技 → ゲージ満タンでMAX必殺</span></div>
+        <div class="title-footer"><span>1人でプレイ <i></i> オンライン対戦 <i></i> デモ観戦</span><span class="title-footer-mark" aria-hidden="true">SB / 01</span></div>
+      </section>
+
+      <section id="start-screen" class="modal-screen start-screen" aria-labelledby="select-title" inert>
+        <div class="menu-heading"><div><div class="eyebrow">SKYBREAK ARENA / スカイサンクチュアリ</div><h1 id="select-title">ファイターを選択</h1></div><div class="menu-meta"><span class="mode-tag">1人用・3ストック</span><button id="title-back-button" type="button" class="title-back-button">タイトルへ</button><button id="menu-sound-button" class="labelled-sound" data-sound-toggle aria-label="音をミュート" aria-pressed="false">音 ON</button></div></div>
+        <div class="character-select" role="group" aria-label="キャラクター選択">
+          <button class="character-option selected" data-character="arc" style="--fighter:#ffd62e" aria-pressed="true"><span class="roster-number">01</span><img data-character-image="arc" alt="" /><strong>アーク</strong><small>電撃バランス</small></button>
+          <button class="character-option" data-character="jet" style="--fighter:#65a8ff" aria-pressed="false"><span class="roster-number">02</span><img data-character-image="jet" alt="" /><strong>ジェット</strong><small>スピード</small></button>
+          <button class="character-option" data-character="mist" style="--fighter:#55d6ce" aria-pressed="false"><span class="roster-number">03</span><img data-character-image="mist" alt="" /><strong>ミスト</strong><small>空中アクション</small></button>
+          <button class="character-option" data-character="brick" style="--fighter:#ff5549" aria-pressed="false"><span class="roster-number">04</span><img data-character-image="brick" alt="" /><strong>ブリック</strong><small>パワー</small></button>
+          <button class="character-option" data-character="spring" style="--fighter:#54d96b" aria-pressed="false"><span class="roster-number">05</span><img data-character-image="spring" alt="" /><strong>スプリング</strong><small>ハイジャンプ</small></button>
+        </div>
+        <div class="selection-detail"><div><strong id="selected-title">アーク</strong><p id="selected-description">雷を宿す結晶ゴーレム。電撃と近接技を扱いやすい。</p><div class="move-summary"><span>B <b id="normal-move">サンダーショット</b></span><span>MAX <b id="max-move">マックスサンダー</b></span></div></div><div id="character-stats" class="character-stats" aria-label="キャラクター性能"></div></div>
+        <div class="match-setup"><div class="match-options"><label>対戦相手<select id="opponent-select"><option value="auto">おまかせ</option><option value="arc">アーク</option><option value="jet">ジェット</option><option value="mist">ミスト</option><option value="brick">ブリック</option><option value="spring">スプリング</option></select></label><label>CPUの強さ<select id="difficulty-select"><option value="easy">やさしい</option><option value="normal" selected>ふつう</option><option value="hard">つよい</option></select></label></div><div class="match-actions"><button id="online-button" class="online-button" disabled><span>オンライン対戦</span><small>クイックマッチ</small></button><button id="start-button" class="primary-button" disabled><span>読み込み中</span><small>アーク VS ジェット</small></button><button id="demo-button" class="demo-button" disabled><span>CPU同士のデモ対戦</span><small>デモ観戦</small></button></div></div>
+        <div class="menu-help"><span class="desktop-instructions">移動 WASD / ← →　ジャンプ SPACE　コンボ J　ショット K　ガード L</span><span class="mobile-instructions">左スティックで移動。Xジャンプ／A攻撃／Bショット／Yガード。A長押しでコンボ。</span><span>ゲージ満タンでB / Kを押すと必殺技</span></div>
       </section>
 
       <section id="online-screen" class="modal-screen online-screen" role="dialog" aria-modal="true" aria-labelledby="online-title">
-        <div class="eyebrow">ONLINE BATTLE / QUICK MATCH</div>
+        <button class="labelled-sound screen-sound" data-sound-toggle aria-label="音をミュート" aria-pressed="false">音 ON</button>
+        <div class="eyebrow">オンライン対戦 / クイックマッチ</div>
         <div class="matchmaking-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
         <h2 id="online-title">対戦相手を探しています</h2>
         <p id="online-status" role="status" aria-live="polite">同じタイミングで参加したプレイヤーと自動で対戦します。</p>
-        <div class="online-fighter"><span>選択中</span><strong id="online-fighter-name">ARC</strong></div>
+        <div class="online-fighter"><span>選択中</span><strong id="online-fighter-name">アーク</strong></div>
+        <button id="online-retry-button" class="secondary-button" hidden>もう一度探す</button>
         <button id="online-cancel-button" class="secondary-button">キャンセル</button>
       </section>
 
       <section id="result-screen" class="modal-screen">
-        <div class="eyebrow">BATTLE RESULT</div>
-        <h2 id="result-title">VICTORY</h2>
+        <button class="labelled-sound screen-sound" data-sound-toggle aria-label="音をミュート" aria-pressed="false">音 ON</button>
+        <div class="eyebrow">対戦結果</div>
+        <h2 id="result-title">勝利</h2>
         <p id="result-copy">空中闘技場を制しました。</p>
         <div id="result-stats" class="result-stats"></div>
-        <button id="restart-button" class="primary-button"><span>もう一度</span><small>REMATCH</small></button>
+        <button id="restart-button" class="primary-button"><span>もう一度</span><small>再戦</small></button>
         <button id="change-character-button" class="secondary-button">キャラクター選択へ</button>
       </section>
 
-      <section id="pause-screen" class="modal-screen pause-screen" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div class="pause-panel"><div class="eyebrow">TAKE A BREATHER</div><h2 id="pause-title">一時停止</h2><label class="volume-control">音量<input id="music-volume" type="range" min="0" max="100" value="60" /><output id="volume-value">60%</output></label><button id="resume-button" class="primary-button"><span>対戦に戻る</span></button><button id="menu-button" class="secondary-button">キャラクターを選び直す</button></div></section>
+      <section id="pause-screen" class="modal-screen pause-screen" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div class="pause-panel"><div class="eyebrow">ポーズ</div><h2 id="pause-title">一時停止</h2><label class="volume-control">音量<input id="music-volume" type="range" min="0" max="100" value="60" /><output id="volume-value">60%</output></label><button id="resume-button" class="primary-button"><span>対戦に戻る</span></button><button id="menu-button" class="secondary-button">キャラクターを選び直す</button></div></section>
 
-      <div id="rotate-notice"><b>↻</b><strong>端末を横向きにしてください</strong><span>横画面専用の操作ボタンを表示します</span></div>
+      <section id="exit-screen" class="modal-screen pause-screen exit-screen" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><div class="pause-panel"><div class="eyebrow">オンライン対戦</div><h2 id="exit-title">対戦から退出しますか？</h2><p id="exit-description">退出すると相手の勝利になり、キャラクター選択に戻ります。</p><p class="exit-warning">確認中も対戦は進行します。</p><button id="exit-cancel-button" class="primary-button"><span>対戦に戻る</span></button><button id="exit-confirm-button" class="secondary-button">退出する</button></div></section>
+
+      <div id="rotate-notice"><b>↻</b><strong>端末を横向きにしてください</strong><span>横画面専用の操作ボタンを表示します</span><button id="portrait-exit-button" class="secondary-button">対戦から退出</button></div>
     </main>
     <script type="module" src="/main-2d.js"></script>
   </body>
