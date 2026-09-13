@@ -1,6 +1,6 @@
 # キャラクターのコマアニメーション
 
-内蔵 image_gen で各キャラクターの参照画像から生成しました。各 PNG は 4 列 × 3 行の 12 ポーズです。ファイル: volt-poses-v1.png / rift-poses-v1.png / kirby-poses-v1.png / brick-poses-v1.png / spring-poses-v1.png。
+内蔵 image_gen で各キャラクターの参照画像から生成しました。各 PNG は 4 列 × 3 行の 12 ポーズです。ファイル: arc-poses-v2.png / jet-poses-v2.png / mist-poses-v2.png / brick-poses-v1.png / spring-poses-v1.png。
 
 画像は固定の縦横比で描画します。メッシュ変形・非等方拡大は使用しません。背景のマゼンタはゲーム起動時にクロマキーで抜きます。
 
@@ -13,7 +13,7 @@ Row 1: (0) relaxed combat idle with fists ready; (1) RUN contact left foot forwa
 Row 2: (4) RUN opposite passing pose right knee bent rising, arms opposed; (5) JUMP launching upward with one arm lifted and trailing foot stretched back, clear real knee/elbow bends; (6) JUMP apex compact knees tucked below body, arms spread for balance; (7) FALL landing-ready legs extended below, knees slightly bent, arms out.
 Row 3: (8) straight punch fully extended to the right, torso twists; (9) forward high kick to the right with supporting knee bent, arms balancing; (10) upward uppercut with bent knees and twisting torso; (11) two-handed energy shot with palms extended right.
 IMPORTANT: actual redrawn limb articulation, different silhouettes in every cell, no stretched versions of a single image. Keep character scale consistent even in crouched poses.
-Character sheet: [volt / rift / kirby / brick / spring]. Preserve this reference character exactly; face right even if the reference faces left.
+Character sheet: [arc / jet / mist / brick / spring]. Preserve this reference character exactly; face right even if the reference faces left.
 ```
 
 ## 背景調整プロンプト

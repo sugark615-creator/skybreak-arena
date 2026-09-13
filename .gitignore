@@ -5,3 +5,9 @@ dist/
 qa-*.png
 .openai/
 verify-polish.mjs
+assets/electric-mouse.png
+assets/pilot-fox.png
+assets/kirby-fighter.png
+assets/volt-poses-v1.png
+assets/rift-poses-v1.png
+assets/kirby-poses-v1.png

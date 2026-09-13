@@ -15,7 +15,7 @@ export function poseVertex(u,v,f) {
   const run=Math.min(1,Math.abs(f.vx||0)/220)*(f.grounded?1:1-air.airborne);
   const side=u<.5?-1:1, front=side===facing;
   const stride=Math.sin(phase)*side*run;
-  const leg=smooth(f.key==='kirby'?.72:.55,.96,v), arm=(1-smooth(.55,.68,v))*smooth(.30,.44,v)*smooth(.15,.38,Math.abs(u-.5));
+  const leg=smooth(f.key==='mist'?.72:.55,.96,v), arm=(1-smooth(.55,.68,v))*smooth(.30,.44,v)*smooth(.15,.38,Math.abs(u-.5));
   const head=1-smooth(.18,.35,v);
   let x=u,y=v;
   x+=leg*stride*.10;

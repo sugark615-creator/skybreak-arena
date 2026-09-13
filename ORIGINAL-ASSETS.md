@@ -1,6 +1,6 @@
 # Original fighter assets
 
-Generated with the built-in image generation tool on 2026-09-13. Each sheet contains 12 authored poses with native alpha. Existing legacy images are retained; production imports use the new sheets.
+Generated with the built-in image generation tool on 2026-09-13. Each sheet contains 12 authored poses with native alpha. Production imports use these original sheets.
 
 ## ARC
 
