@@ -286,9 +286,10 @@ function disconnectOnline(){
   onlineClient?.disconnect();onlineClient=null;onlineMode=false;onlineRole=null;onlineReady=false;remoteReady=false;
   remoteInput={left:false,right:false,down:false,guard:false,attack:false,jumpSeq:0,attackSeq:0,specialSeq:0};
   remoteActions={jumpSeq:0,attackSeq:0,specialSeq:0};
+  Object.assign(localActions,{jumpSeq:0,attackSeq:0,specialSeq:0});
 }
 function cancelQuickMatch(){
-  disconnectOnline();ui.online.classList.remove('visible');ui.start.classList.add('visible');shell.classList.add('in-menu');
+  disconnectOnline();setModeUi();ui.online.classList.remove('visible');ui.start.classList.add('visible');shell.classList.add('in-menu');
   document.querySelector('[data-character="'+selectedCharacter+'"]').focus();
 }
 function beginQuickMatch(){
